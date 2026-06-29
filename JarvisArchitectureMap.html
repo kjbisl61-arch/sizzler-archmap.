@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jarvis — Architecture Map</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #0A0E1A; color: #E8F4FD; min-height: 100vh; overflow: hidden; }
+
+    .header { background: linear-gradient(135deg, #0A2A4A, #0A0E1A); padding: 10px 16px; border-bottom: 1px solid #1E3A5F; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .back-btn { background: #111827; border: 1px solid #1E3A5F; color: #00D4FF; padding: 5px 12px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+    .back-btn:hover { background: #00D4FF; color: #0A0E1A; }
+    .header h1 { font-size: 1rem; font-weight: 700; color: #00D4FF; }
+    .header p { font-size: 0.72rem; color: #8899AA; font-style: italic; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    .fs-btn { background: #111827; border: 1px solid #1E3A5F; color: #00FF88; padding: 5px 12px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .fs-btn:hover { background: #00FF88; color: #0A0E1A; }
+
+    .legend { display: flex; gap: 10px; flex-wrap: wrap; padding: 6px 16px; background: #111827; border-bottom: 1px solid #1E3A5F; }
+    .leg-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #8899AA; }
+    .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    .map-container { position: relative; width: 100%; overflow: hidden; }
+
+    svg.lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+    .node { position: absolute; transform: translate(-50%, -50%); cursor: pointer; text-align: center; z-index: 10; }
+
+    .node-jarvis { width: 110px; height: 110px; border-radius: 50%; background: linear-gradient(135deg, #0A2A4A, #0077B6); border: 3px solid #00D4FF; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 30px #00D4FF44; transition: all 0.2s; }
+    .node-jarvis:hover { box-shadow: 0 0 50px #00D4FF88; transform: translate(-50%,-50%) scale(1.05); }
+    .node-jarvis .n-name { font-size: 0.95rem; font-weight: 700; color: #00D4FF; }
+    .node-jarvis .n-role { font-size: 0.58rem; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .node-jarvis .n-phase { font-size: 0.55rem; color: #00FF88; margin-top: 3px; font-weight: 700; }
+
+    .node-agent { width: 76px; height: 76px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.2s; border: 2px solid; }
+    .node-agent:hover { transform: translate(-50%,-50%) scale(1.12); }
+    .node-agent .n-name { font-size: 0.75rem; font-weight: 700; }
+    .node-agent .n-role { font-size: 0.52rem; margin-top: 1px; opacity: 0.8; }
+    .node-agent .n-status { font-size: 0.5rem; margin-top: 3px; font-weight: 700; }
+
+    .node-lg { width: 86px; height: 86px; }
+
+    .s-live { background: #0A2A1A; border-color: #00FF88 !important; box-shadow: 0 0 12px #00FF8844; }
+    .s-live .n-name { color: #00FF88; } .s-live .n-status { color: #00FF88; }
+    .s-active { background: #0A2A3A; border-color: #00D4FF !important; box-shadow: 0 0 12px #00D4FF44; }
+    .s-active .n-name { color: #00D4FF; } .s-active .n-status { color: #00D4FF; }
+    .s-tbd { background: #2A0A0A; border-color: #FF6B6B !important; box-shadow: 0 0 12px #FF6B6B44; }
+    .s-tbd .n-name { color: #FF6B6B; } .s-tbd .n-status { color: #FF6B6B; }
+    .s-progress { background: #2A2000; border-color: #FFD700 !important; box-shadow: 0 0 12px #FFD70044; }
+    .s-progress .n-name { color: #FFD700; } .s-progress .n-status { color: #FFD700; }
+    .s-planned { background: #1A1A2A; border-color: #8899AA !important; opacity: 0.65; }
+    .s-planned .n-name { color: #8899AA; } .s-planned .n-status { color: #8899AA; }
+
+    .loop-label { position: absolute; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; opacity: 0.35; pointer-events: none; }
+
+    .phase-bar { display: flex; border-top: 1px solid #1E3A5F; }
+    .phase-item { flex: 1; padding: 6px 8px; text-align: center; border-right: 1px solid #1E3A5F; cursor: pointer; }
+    .phase-item:last-child { border-right: none; }
+    .phase-item:hover { background: #111827; }
+    .phase-num { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
+    .phase-name { font-size: 0.68rem; margin-top: 1px; color: #8899AA; }
+    .p1 .phase-num { color: #00FF88; } .p2 .phase-num { color: #00D4FF; }
+    .p3 .phase-num { color: #FFD700; } .p4 .phase-num { color: #FF6B6B; }
+
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; }
+    .modal.open { display: flex; }
+    .modal-box { background: #111827; border: 1px solid #1E3A5F; border-radius: 12px; padding: 20px 24px; max-width: 480px; width: 90%; position: relative; max-height: 80vh; overflow-y: auto; }
+    .modal-close { position: absolute; top: 12px; right: 14px; background: none; border: none; color: #8899AA; font-size: 1.2rem; cursor: pointer; }
+    .modal-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+    .modal-role { font-size: 0.8rem; color: #8899AA; margin-bottom: 12px; }
+    .modal-section { margin-bottom: 10px; }
+    .modal-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: #8899AA; margin-bottom: 3px; }
+    .modal-text { font-size: 0.82rem; line-height: 1.6; color: #E8F4FD; }
+    .modal-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .modal-link { display: inline-block; padding: 5px 12px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; text-decoration: none; border: 1px solid; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.65rem; font-weight: 700; }
+    .tag.green { background: #0A2A1A; color: #00FF88; border: 1px solid #00FF8844; }
+    .tag.cyan { background: #0A2A3A; color: #00D4FF; border: 1px solid #00D4FF44; }
+    .tag.coral { background: #2A0A0A; color: #FF6B6B; border: 1px solid #FF6B6B44; }
+    .tag.gold { background: #2A2000; color: #FFD700; border: 1px solid #FFD70044; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <a href="https://sizzler-controlcentre.vercel.app/" class="back-btn">← Control Centre</a>
+      <div>
+        <h1>Jarvis — Architecture Map</h1>
+        <p>Click any component to view specification and TBDs</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="fs-btn" onclick="toggleFS()">⛶ Full Screen</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#00FF88;box-shadow:0 0 5px #00FF88"></div>Live / Complete</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#00D4FF"></div>Active / Defined</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#FFD700"></div>In Progress</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#FF6B6B"></div>TBDs Unresolved</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#8899AA"></div>Planned Phase 2+</div>
+  </div>
+
+  <div class="map-container" id="map">
+    <svg class="lines" id="svg-lines"></svg>
+
+    <!-- JARVIS — Centre -->
+    <div class="node" id="node-jarvis" style="left:50%;top:48%" onclick="showModal('jarvis')">
+      <div class="node-jarvis">
+        <div class="n-name">JARVIS</div>
+        <div class="n-role">Command Centre</div>
+        <div class="n-phase">Phase 1 Placeholder</div>
+      </div>
+    </div>
+
+    <!-- Inner ring — Version 1 agents -->
+    <div class="node" id="node-siz" style="left:50%;top:14%" onclick="showModal('siz')">
+      <div class="node-agent node-lg s-live"><div class="n-name">SIZ</div><div class="n-role">Creative Director</div><div class="n-status">● Live</div></div>
+    </div>
+    <div class="node" id="node-ellis" style="left:74%;top:24%" onclick="showModal('ellis')">
+      <div class="node-agent node-lg s-tbd"><div class="n-name">Ellis</div><div class="n-role">Gatekeeper</div><div class="n-status">⚫ TBD</div></div>
+    </div>
+    <div class="node" id="node-rex" style="left:84%;top:48%" onclick="showModal('rex')">
+      <div class="node-agent node-lg s-live"><div class="n-name">Rex</div><div class="n-role">Database</div><div class="n-status">● Live</div></div>
+    </div>
+    <div class="node" id="node-ada" style="left:74%;top:72%" onclick="showModal('ada')">
+      <div class="node-agent node-lg s-progress"><div class="n-name">Ada</div><div class="n-role">Doc Control</div><div class="n-status">◐ Building</div></div>
+    </div>
+    <div class="node" id="node-maya" style="left:50%;top:82%" onclick="showModal('maya')">
+      <div class="node-agent node-lg s-active"><div class="n-name">Maya</div><div class="n-role">Writer</div><div class="n-status">◑ Active</div></div>
+    </div>
+    <div class="node" id="node-knox" style="left:26%;top:72%" onclick="showModal('knox')">
+      <div class="node-agent node-lg s-tbd"><div class="n-name">Knox</div><div class="n-role">Security</div><div class="n-status">⚫ TBD</div></div>
+    </div>
+    <div class="node" id="node-sage" style="left:16%;top:48%" onclick="showModal('sage')">
+      <div class="node-agent node-lg s-tbd"><div class="n-name">Sage</div><div class="n-role">Diagnostic</div><div class="n-status">⚫ TBD</div></div>
+    </div>
+    <div class="node" id="node-interp" style="left:26%;top:24%" onclick="showModal('interp')">
+      <div class="node-agent node-lg s-tbd"><div class="n-name" style="font-size:0.68rem">Interpret</div><div class="n-role">Layer</div><div class="n-status">⚫ TBD</div></div>
+    </div>
+
+    <!-- Outer ring — Version 2 agents -->
+    <div class="node" id="node-scout" style="left:50%;top:4%" onclick="showModal('scout')">
+      <div class="node-agent s-planned"><div class="n-name">Scout</div><div class="n-role">Web Intel</div><div class="n-status">○ Ph2</div></div>
+    </div>
+    <div class="node" id="node-cleo" style="left:67%;top:8%" onclick="showModal('cleo')">
+      <div class="node-agent s-tbd" style="width:68px;height:68px"><div class="n-name" style="font-size:0.7rem">Cleo</div><div class="n-role" style="font-size:0.5rem">Media</div><div class="n-status" style="font-size:0.5rem">⚫ TBD</div></div>
+    </div>
+    <div class="node" id="node-ray" style="left:90%;top:32%" onclick="showModal('ray')">
+      <div class="node-agent s-planned" style="width:64px;height:64px"><div class="n-name" style="font-size:0.7rem">Ray</div><div class="n-role" style="font-size:0.5rem">Audio</div><div class="n-status" style="font-size:0.5rem">○ Ph2</div></div>
+    </div>
+    <div class="node" id="node-finn" style="left:93%;top:58%" onclick="showModal('finn')">
+      <div class="node-agent s-planned" style="width:64px;height:64px"><div class="n-name" style="font-size:0.7rem">Finn</div><div class="n-role" style="font-size:0.5rem">Video</div><div class="n-status" style="font-size:0.5rem">○ Ph2</div></div>
+    </div>
+    <div class="node" id="node-marco" style="left:80%;top:88%" onclick="showModal('marco')">
+      <div class="node-agent s-planned" style="width:64px;height:64px"><div class="n-name" style="font-size:0.7rem">Marco</div><div class="n-role" style="font-size:0.5rem">Products</div><div class="n-status" style="font-size:0.5rem">○ Ph2</div></div>
+    </div>
+    <div class="node" id="node-leo" style="left:62%;top:94%" onclick="showModal('leo')">
+      <div class="node-agent s-planned" style="width:64px;height:64px"><div class="n-name" style="font-size:0.7rem">Leo</div><div class="n-role" style="font-size:0.5rem">Contracts</div><div class="n-status" style="font-size:0.5rem">○ Ph2</div></div>
+    </div>
+    <div class="node" id="node-vera" style="left:38%;top:94%" onclick="showModal('vera')">
+      <div class="node-agent s-planned" style="width:64px;height:64px"><div class="n-name" style="font-size:0.7rem">Vera</div><div class="n-role" style="font-size:0.5rem">Legal</div><div class="n-status" style="font-size:0.5rem">○ Ph2</div></div>
+    </div>
+    <div class="node" id="node-max" style="left:20%;top:88%" onclick="showModal('max')">
+      <div class="node-agent s-planned" style="width:64px;height:64px"><div class="n-name" style="font-size:0.7rem">Max</div><div class="n-role" style="font-size:0.5rem">Accounting</div><div class="n-status" style="font-size:0.5rem">○ Ph2</div></div>
+    </div>
+    <div class="node" id="node-webui" style="left:7%;top:58%" onclick="showModal('webui')">
+      <div class="node-agent s-planned" style="width:68px;height:68px;border-style:dashed"><div class="n-name" style="font-size:0.65rem">Web/UI</div><div class="n-role" style="font-size:0.5rem">Dev Agent</div><div class="n-status" style="font-size:0.5rem">○ Ph3</div></div>
+    </div>
+    <div class="node" id="node-33" style="left:10%;top:32%" onclick="showModal('scout')">
+      <div class="node-agent s-planned" style="width:64px;height:64px;opacity:0"></div>
+    </div>
+    <div class="node" id="node-34" style="left:33%;top:8%" onclick="showModal('scout')">
+      <div class="node-agent s-planned" style="width:64px;height:64px;opacity:0"></div>
+    </div>
+
+    <!-- Loop labels -->
+    <div class="loop-label" style="left:70%;top:46%;color:#00FF88">CONTENT →</div>
+    <div class="loop-label" style="left:24%;top:36%;color:#F4A261;transform:rotate(-45deg)">← KNOWLEDGE</div>
+    <div class="loop-label" style="left:58%;top:78%;color:#48CAE4">COMMERCIAL</div>
+
+  </div>
+
+  <!-- Phase Bar -->
+  <div class="phase-bar">
+    <div class="phase-item p1" onclick="showModal('phase1')"><div class="phase-num">Phase 1</div><div class="phase-name">Design Tools ✅</div></div>
+    <div class="phase-item p2" onclick="showModal('phase2')"><div class="phase-num">Phase 2</div><div class="phase-name">Build</div></div>
+    <div class="phase-item p3" onclick="showModal('phase3')"><div class="phase-num">Phase 3</div><div class="phase-name">Beta Launch</div></div>
+    <div class="phase-item p4" onclick="showModal('phase4')"><div class="phase-num">Phase 4</div><div class="phase-name">Live Launch</div></div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-role" id="modal-role"></div>
+      <div id="modal-body"></div>
+      <div class="modal-links" id="modal-links"></div>
+    </div>
+  </div>
+
+<script>
+var CC = "https://sizzler-controlcentre.vercel.app/";
+var GANTT = "https://1drv.ms/x/c/58b0cd7e7aac633d/IQB-NwfKkkj8QoP_A0oPZk9uAe_97WKOXIwMRAHecnh7PNg?e=w5qJs3";
+
+var agents = {
+  jarvis: { title:"Jarvis — Command Centre", role:"Platform anchor · Phase 1 placeholder · Phase 2 build target", status:"active", phase:"Phase 1 placeholder — Phase 2 full build", desc:"Jarvis is the command centre. Currently a Phase 1 design tool. The real Jarvis — conversational voice interface, five enterprise types, agent pipeline — is the Phase 2 build target defined in Concept Drawing v1.0.", tbds:"Voice interface, enterprise selection routing, conversational UI, morning briefing system", links:[{label:"Control Centre",url:CC,color:"#00D4FF"},{label:"Gantt Chart",url:GANTT,color:"#00FF88"}] },
+  siz: { title:"Siz — Creative Director", role:"Human operator · Media source · Vision", status:"live", phase:"Always active", desc:"Deposits ideas, raw content and direction into Jarvis. The vision engine. Jarvis holds the execution layer so the vision engine runs freely.", tbds:"None", links:[] },
+  ellis: { title:"Ellis — Editor & Gatekeeper", role:"Publishing gatekeeper · Quality control · Brand filter", status:"tbd", phase:"Version 1 — Phase 2 build", desc:"Nothing goes live without Ellis sign-off. Reviews for brand consistency, quality, tone. The quality gate of the entire system.", tbds:"Ellis approval workflow, rejection and revision protocol, brand checklist criteria", links:[{label:"Agent Register",url:CC,color:"#FF6B6B"}] },
+  rex: { title:"Rex — Database", role:"System memory · Rex-first protocol", status:"live", phase:"Live — localStorage connected", desc:"Every input goes to Rex before any agent activates. Original locked and IP timestamped. Currently operational via localStorage with client profile active.", tbds:"Rex upgrade trigger — localStorage to Supabase/Firebase when first paying client or 500 items", links:[{label:"Jarvis V3 — Rex",url:"https://sizzler-jarvis-v3.vercel.app/",color:"#00FF88"}] },
+  ada: { title:"Ada — Document Control", role:"Document control · Library owner · First agent to activate", status:"progress", phase:"Phase 1 — activates first in Phase 2", desc:"Ada owns all documents, version history and Ada's Library search layer. Every document named, versioned, filed and registered.", tbds:"Ada activation brief, library search indexing, document classification system", links:[{label:"Agent Register",url:CC,color:"#FFD700"}] },
+  maya: { title:"Maya — Writer", role:"All written content · Captions, scripts, copy", status:"active", phase:"Version 1 — Second agent activated", desc:"Produces all written public-facing copy. Receives briefs from Jarvis, media from Cleo, guidelines from Ada. All output to Ellis.", tbds:"Maya activation brief, brand voice loading, Ellis handoff protocol", links:[{label:"Brand Voice Guide",url:CC,color:"#00D4FF"}] },
+  knox: { title:"Knox — Security & Authentication", role:"Security layer · Two-step auth · Cannot be retrofitted", status:"tbd", phase:"Version 1 — Built in from day one", desc:"Manages all authentication and security. Visitor, registered and admin access levels. Must be built in from day one.", tbds:"Knox encryption standard, external auth providers (Google/Apple), data encryption specification", links:[{label:"TBD Register",url:CC,color:"#FF6B6B"}] },
+  sage: { title:"Sage — Diagnostic & Goals Discovery", role:"Goals discovery · Hard Stop · Four pathways", status:"tbd", phase:"Version 1 — Activates with business intake", desc:"Handles diagnostic and goals discovery. Conversational, not form-based. Four life inventory questions. Hard Stop if user not ready. Four pathways defined.", tbds:"Sage four pathways fully documented, SMART goals→pillar mapping, Hard Stop criteria", links:[{label:"TBD Register",url:CC,color:"#FF6B6B"}] },
+  interp: { title:"Interpretation Layer", role:"Input classification · Seven types · Three-phase learning", status:"tbd", phase:"Most complex build — TBDs must be resolved first", desc:"Classifies every input into one of seven types: Idea, Task, Content Request, Question, Problem, Document, Decision. Three-phase learning evolution.", tbds:"Confidence threshold Phase 2→3, conflict resolution for dual-type inputs, multi-input handling", links:[{label:"Agent Register v1.4",url:CC,color:"#FF6B6B"}] },
+  scout: { title:"Scout — Web Intelligence", role:"External intelligence · Overnight gathering · Feeds Rex", status:"planned", phase:"Version 2 — Phase 2", desc:"Gathers relevant intelligence overnight. Finds people, events, media and trends for content pipeline. Powers the morning briefing.", tbds:"Search parameters, source quality criteria, Rex storage format", links:[] },
+  cleo: { title:"Cleo — Media Assets", role:"Media intake · Tagging · Distribution to content agents", status:"tbd", phase:"Version 2 — Full specification required", desc:"Receives raw media, organises and tags by pillar (Ocean/Road/Human), location, date and quality. Distributes to Maya, Ray and Finn.", tbds:"FULL SPEC REQUIRED — media formats, tagging system, quality criteria, Rex integration, distribution flow", links:[{label:"TBD Register",url:CC,color:"#FF6B6B"}] },
+  ray: { title:"Ray — Audio", role:"Podcast · Voiceover · Sound design", status:"planned", phase:"Version 2 — Phase 2", desc:"All audio content — podcast, voiceovers, soundscapes. Receives briefs from Jarvis and assets from Cleo.", tbds:"Ray activation brief", links:[] },
+  finn: { title:"Finn — Video", role:"Editing · Reels · YouTube", status:"planned", phase:"Version 2 — Phase 2", desc:"All video content — GoPro editing, Reels, YouTube long form. Receives footage from Cleo.", tbds:"Finn activation brief", links:[] },
+  marco: { title:"Marco — Products & Services", role:"Affiliate · Partnerships · Product development", status:"planned", phase:"Version 2 — Phase 2", desc:"Identifies product and service opportunities, affiliate partnerships. Output to Ellis then Leo.", tbds:"Marco activation brief", links:[] },
+  leo: { title:"Leo — Contracts", role:"Brand deals · Agreements · Legal controls", status:"planned", phase:"Version 2 — Phase 2", desc:"Manages contracts, brand deals and agreements. Works with Marco and Vera.", tbds:"Leo activation brief", links:[] },
+  vera: { title:"Vera — Legal", role:"IP protection · Compliance · Legal oversight", status:"planned", phase:"Version 2 — Phase 2", desc:"Legal oversight and IP protection. Wraps around Leo and Ada.", tbds:"Vera activation brief", links:[] },
+  max: { title:"Max — Accounting", role:"Income tracking · Budget · Financial reporting", status:"planned", phase:"Version 2 — Phase 2", desc:"Tracks income, expenses and budget vs actual. Activates when first income received.", tbds:"Max activation brief", links:[] },
+  webui: { title:"Web/UI Development Agent — TBD Name", role:"HTML builds · Web pages · Landing pages · Phase 3", status:"planned", phase:"Phase 3 — specification required in TBD session", desc:"Receives brand brief from Ada. Builds HTML tools, web pages and landing pages. Works from Jarvis Brand Kit 2 or Sizzler Brand Kit 1. Outputs to Ellis for approval. Currently performed manually by Claude — becomes automated in Phase 3.", tbds:"Agent name TBD, full activation brief, brand kit switching logic, Ellis handoff protocol", links:[{label:"TBD Register",url:CC,color:"#8899AA"}] },
+  phase1: { title:"Phase 1 — Design Tools", role:"WHERE WE ARE NOW ✅", status:"live", phase:"Active — nearing completion", desc:"Build the tools that help design the system. Control Centre, Builder's Log, Gantt, Agent Register, Business Plan, Architecture Blueprint, Concept Drawing, Skills Register, Architecture Map.", tbds:"Remaining: Daily Operating Guide Vercel, Launch pad, Favicon, Jarvis Definition Doc, Ideas HTML page, TBD resolution session, Control Centre four phases update, Backup protocol", links:[{label:"Control Centre",url:CC,color:"#00FF88"},{label:"Gantt Chart",url:GANTT,color:"#00D4FF"}] },
+  phase2: { title:"Phase 2 — Build", role:"NEXT PHASE", status:"active", phase:"Starts when Phase 1 complete", desc:"Detailed plan locked. Agent Register TBDs resolved. Build each component in order — Ada first, Maya, Knox, Sage, Interpretation Layer, then Version 2 agents.", tbds:"Cannot start until all Phase 1 TBDs resolved and Agent Register v1.5 signed off", links:[{label:"Gantt Chart",url:GANTT,color:"#00D4FF"}] },
+  phase3: { title:"Phase 3 — Beta Launch & Test", role:"COMING SOON", status:"progress", phase:"After Phase 2 complete", desc:"Live but controlled. ANT as first beta client. Siz as primary test user. Find bugs, fix, refine. Cleo processes Bali media catalog. Morning briefing tested.", tbds:"Beta test protocol, bug tracking, client onboarding process", links:[] },
+  phase4: { title:"Phase 4 — Live Launch", role:"THE DESTINATION", status:"planned", phase:"After Phase 3 beta complete", desc:"Jarvis operational. Content machine running. All agents active. Morning briefing live. ANT and Sizzler content flowing. Passive income activating.", tbds:"Launch checklist, marketing plan activation, Patreon, NZ Bodysurfing Guide", links:[] }
+};
+
+var statusColors = { live:"#00FF88", active:"#00D4FF", progress:"#FFD700", tbd:"#FF6B6B", planned:"#8899AA" };
+
+function showModal(id) {
+  var a = agents[id];
+  if (!a) return;
+  var color = statusColors[a.status] || "#00D4FF";
+  document.getElementById("modal-title").style.color = color;
+  document.getElementById("modal-title").textContent = a.title;
+  document.getElementById("modal-role").textContent = a.role;
+  var body = '<div class="modal-section"><div class="modal-label">Phase</div><div class="modal-text">' + a.phase + '</div></div>';
+  body += '<div class="modal-section"><div class="modal-label">Description</div><div class="modal-text">' + a.desc + '</div></div>';
+  if (a.tbds) body += '<div class="modal-section"><div class="modal-label">TBDs / Open Items</div><div class="modal-text" style="color:#FF6B6B">' + a.tbds + '</div></div>';
+  document.getElementById("modal-body").innerHTML = body;
+  var links = "";
+  if (a.links && a.links.length) a.links.forEach(function(l) { links += '<a href="' + l.url + '" target="_blank" class="modal-link" style="color:' + l.color + ';border-color:' + l.color + '44">' + l.label + ' →</a>'; });
+  document.getElementById("modal-links").innerHTML = links;
+  document.getElementById("modal").classList.add("open");
+}
+
+function closeModal() { document.getElementById("modal").classList.remove("open"); }
+document.getElementById("modal").addEventListener("click", function(e) { if (e.target === this) closeModal(); });
+
+function toggleFS() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+function setMapHeight() {
+  var header = document.querySelector('.header').offsetHeight;
+  var legend = document.querySelector('.legend').offsetHeight;
+  var phasebar = document.querySelector('.phase-bar').offsetHeight;
+  var h = window.innerHeight - header - legend - phasebar;
+  document.getElementById('map').style.height = h + 'px';
+}
+
+function drawLines() {
+  var map = document.getElementById("map");
+  var svg = document.getElementById("svg-lines");
+  var W = map.offsetWidth;
+  var H = map.offsetHeight;
+  var cx = W * 0.5;
+  var cy = H * 0.48;
+
+  var nodeIds = ["node-siz","node-ellis","node-rex","node-ada","node-maya","node-knox","node-sage","node-interp","node-scout","node-cleo","node-ray","node-finn","node-marco","node-leo","node-vera","node-max","node-webui"];
+  var colors = {"node-siz":"#00FF88","node-rex":"#00FF88","node-ada":"#FFD700","node-maya":"#00D4FF","node-ellis":"#FF6B6B","node-knox":"#FF6B6B","node-sage":"#FF6B6B","node-interp":"#FF6B6B","node-cleo":"#FF6B6B","node-scout":"#8899AA","node-ray":"#8899AA","node-finn":"#8899AA","node-marco":"#8899AA","node-leo":"#8899AA","node-vera":"#8899AA","node-max":"#8899AA","node-webui":"#8899AA"};
+
+  var lines = "";
+  nodeIds.forEach(function(nid) {
+    var el = document.getElementById(nid);
+    if (!el) return;
+    var rect = el.getBoundingClientRect();
+    var mapRect = map.getBoundingClientRect();
+    var nx = rect.left + rect.width/2 - mapRect.left;
+    var ny = rect.top + rect.height/2 - mapRect.top;
+    var c = colors[nid] || "#8899AA";
+    lines += '<line x1="'+cx+'" y1="'+cy+'" x2="'+nx+'" y2="'+ny+'" stroke="'+c+'" stroke-width="1" opacity="0.2" stroke-dasharray="4 4"/>';
+  });
+  svg.innerHTML = lines;
+}
+
+window.addEventListener("load", function() { setMapHeight(); drawLines(); });
+window.addEventListener("resize", function() { setMapHeight(); drawLines(); });
+</script>
+</body>
+</html>
